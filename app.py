@@ -3,7 +3,7 @@ import pandas as pd
 from predictor import recommend_numbers, get_top_hot_numbers
 
 st.set_page_config("双色球预测软件", layout="wide")
-st.title("🎯 双色球历史规律预测软件")
+st.title("🎯 历史规律预测软件")
 
 # ===== 数据加载 =====
 st.subheader("📂 历史数据上传")
