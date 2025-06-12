@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from predictor import recommend_numbers, get_top_hot_numbers
 
-st.set_page_config("双色球预测软件", layout="wide")
+st.set_page_config("预测软件", layout="wide")
 st.title("🎯 历史规律预测软件")
 
 # ===== 数据加载 =====
