@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from predictor import recommend_numbers, get_top_hot_numbers
+from predictor import recommend_numbers, get_top_hot_numbers, recommend_by_model
 
 st.set_page_config("双色球预测软件", layout="wide")
 st.title("🎯 双色球历史规律预测软件")
@@ -58,6 +58,12 @@ if uploaded_file:
     )
     st.markdown(f"**推荐红球（可从中选取2~4个）**：\n\n{', '.join(map(str, recommend['红球']))}")
     st.markdown(f"**推荐篮球（热度靠前）**：\n\n{', '.join(map(str, recommend['篮球']))}")
+
+    # ===== 机器学习推荐 =====
+    st.subheader("🧠 机器学习推荐号码（仅供参考）")
+    model_recommend = recommend_by_model(df)
+    st.markdown(f"**ML 推荐红球：**\n\n{', '.join(map(str, model_recommend['红球']))}")
+    st.markdown(f"**ML 推荐篮球：**\n\n{', '.join(map(str, model_recommend['篮球']))}")
 
 else:
     st.warning("请先上传历史数据 Excel 文件。")
