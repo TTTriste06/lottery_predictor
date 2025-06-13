@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from predictor import recommend_numbers, get_top_hot_numbers
 
-st.set_page_config("预测软件", layout="wide")
-st.title("🎯 历史规律预测软件")
+st.set_page_config("双色球预测软件", layout="wide")
+st.title("🎯 双色球历史规律预测软件")
 
 # ===== 数据加载 =====
 st.subheader("📂 历史数据上传")
@@ -29,11 +29,35 @@ if uploaded_file:
     col1.bar_chart(hot_reds)
     col2.bar_chart(hot_blues)
 
+    # ===== 理论依据说明 =====
+    st.subheader("📚 理论依据")
+    with st.expander("📌 理论依据 1：历史无重复组合"):
+        st.markdown("03年至今共3303期，从未出现完全相同红球组合，可用于排除已开奖组合。")
+    with st.expander("📌 理论依据 2：相同号码统计"):
+        st.markdown("下期与本期红球有1个相同的概率最高（43.41%），推荐加入1~2个。")
+    with st.expander("📌 理论依据 3：相邻号码统计"):
+        st.markdown("下期红球中包含上期左右相邻号（±1）的概率接近 26%。")
+    with st.expander("📌 理论依据 4：篮球差值"):
+        st.markdown("下期篮球与上期差值为 ±1~±5 的概率达 7~11%。")
+
+    # ===== 预测策略选项开关 =====
+    st.subheader("⚙️ 预测策略设置")
+    use_repeat = st.checkbox("启用 理论依据2：加入上期相同红球", value=True)
+    use_neighbor = st.checkbox("启用 理论依据3：加入相邻红球（±1）", value=True)
+    use_blue_delta = st.checkbox("启用 理论依据4：篮球差值 ±1~5", value=True)
+    exclude_history = st.checkbox("启用 理论依据1：排除历史完全重复组合", value=True)
+
     # ===== 预测推荐 =====
     st.subheader("🎯 历史规律推荐号码")
-    recommend = recommend_numbers(df)
-    st.markdown(f"**推荐红球（可从中选取2~4个）**：{recommend['红球']}\n\n")
-    st.markdown(f"**推荐篮球（热度靠前）**：{recommend['篮球']}")
+    recommend = recommend_numbers(
+        df,
+        use_repeat=use_repeat,
+        use_neighbor=use_neighbor,
+        use_blue_delta=use_blue_delta,
+        exclude_history=exclude_history
+    )
+    st.markdown(f"**推荐红球（可从中选取2~4个）**：\n\n{', '.join(map(str, recommend['红球']))}")
+    st.markdown(f"**推荐篮球（热度靠前）**：\n\n{', '.join(map(str, recommend['篮球']))}")
 
 else:
     st.warning("请先上传历史数据 Excel 文件。")
