@@ -1,50 +1,99 @@
-import streamlit as st
 import pandas as pd
-from predictor import recommend_numbers, get_top_hot_numbers
+from collections import Counter
 
-st.set_page_config("双色球预测软件", layout="wide")
-st.title("🎯 双色球历史规律预测软件")
+def get_top_hot_numbers(df):
+    """统计红球和篮球出现频率"""
+    reds = df[["红球1", "红球2", "红球3", "红球4", "红球5", "红球6"]].values.flatten()
+    blues = df["篮球"].values
+    
+    red_counts = Counter(reds)
+    blue_counts = Counter(blues)
+    
+    red_df = pd.Series(red_counts).sort_values(ascending=False).head(20)
+    blue_df = pd.Series(blue_counts).sort_values(ascending=False).head(10)
+    return red_df, blue_df
 
-# ===== 数据加载 =====
-st.subheader("📂 历史数据上传")
-uploaded_file = st.file_uploader("上传双色球历史数据文件（.xlsx）", type="xlsx")
+def get_last_draw(df):
+    """获取最近一期的红球与篮球号码"""
+    latest = df.iloc[0]
+    red_last = set(map(int, latest[["红球1", "红球2", "红球3", "红球4", "红球5", "红球6"]]))
+    blue_last = int(latest["篮球"])
+    return red_last, blue_last
 
-if uploaded_file:
-    df_raw = pd.read_excel(uploaded_file, sheet_name="数据统计", skiprows=6)
-    df_raw = df_raw.dropna(how="all").reset_index(drop=True)
-    df = df_raw.iloc[2:, :11].copy()
-    df.columns = ["期号", "红球1", "红球2", "红球3", "红球4", "红球5", "红球6", "篮球", "奇数个数", "偶数个数", "和值"]
-    df.reset_index(drop=True, inplace=True)
+def get_neighbor_candidates(red_last):
+    """获取左右相邻红球的备选（左一/右一）"""
+    neighbors = set()
+    for num in red_last:
+        if 1 <= num - 1 <= 33:
+            neighbors.add(num - 1)
+        if 1 <= num + 1 <= 33:
+            neighbors.add(num + 1)
+    return neighbors
 
-    st.success("✅ 数据读取成功！")
+def get_blue_candidates(blue_last):
+    """获取与上期篮球差值为±1~5的候选篮球"""
+    candidates = set()
+    for d in range(1, 6):
+        for b in [blue_last - d, blue_last + d]:
+            if 1 <= b <= 16:
+                candidates.add(b)
+    return candidates
 
-    # ===== 数据展示 =====
-    st.subheader("📊 最近10期开奖记录")
-    st.dataframe(df.head(10))
+def get_all_historical_combinations(df):
+    """提取历史所有红球组合（升序元组）用于去重"""
+    history = set()
+    for _, row in df.iterrows():
+        balls = tuple(sorted(map(int, row[["红球1", "红球2", "红球3", "红球4", "红球5", "红球6"]])))
+        history.add(balls)
+    return history
 
-    # ===== 高频号码统计 =====
-    st.subheader("🔥 红球/篮球出现频率")
-    hot_reds, hot_blues = get_top_hot_numbers(df)
-    col1, col2 = st.columns(2)
-    col1.bar_chart(hot_reds)
-    col2.bar_chart(hot_blues)
+def recommend_numbers(df, use_repeat=True, use_neighbor=True, use_blue_delta=True, exclude_history=True):
+    """
+    综合多种理论依据推荐红球与篮球：
+    - 高频热号
+    - 上期重复红球（1~2个）
+    - 相邻红球
+    - 上期篮球 ±1~5
+    - 排除历史重复组合（完整6红球）
+    """
+    red_df, blue_df = get_top_hot_numbers(df)
+    red_last, blue_last = get_last_draw(df)
+    history_set = get_all_historical_combinations(df) if exclude_history else set()
 
-    # ===== 理论依据说明 =====
-    st.subheader("📚 理论依据")
-    with st.expander("📌 理论依据 1：历史无重复组合"):
-        st.markdown("03年至今共3303期，从未出现完全相同红球组合，可用于排除已开奖组合。")
-    with st.expander("📌 理论依据 2：相同号码统计"):
-        st.markdown("下期与本期红球有1个相同的概率最高（43.41%），推荐加入1~2个。")
-    with st.expander("📌 理论依据 3：相邻号码统计"):
-        st.markdown("下期红球中包含上期左右相邻号（±1）的概率接近 26%。")
-    with st.expander("📌 理论依据 4：篮球差值"):
-        st.markdown("下期篮球与上期差值为 ±1~±5 的概率达 7~11%。")
+    red_repeat = list(red_last & set(red_df.index))[:2] if use_repeat else []
+    neighbor_reds = get_neighbor_candidates(red_last) if use_neighbor else set()
 
-    # ===== 预测推荐 =====
-    st.subheader("🎯 历史规律推荐号码")
-    recommend = recommend_numbers(df)
-    st.markdown(f"**推荐红球（可从中选取2~4个）**：\n\n{', '.join(map(str, recommend['红球']))}")
-    st.markdown(f"**推荐篮球（热度靠前）**：\n\n{', '.join(map(str, recommend['篮球']))}")
+    top_reds = [r for r in red_df.index if r not in red_repeat][:10]
+    candidate_reds = sorted(set(red_repeat + top_reds + list(neighbor_reds)))[:20]
 
-else:
-    st.warning("请先上传历史数据 Excel 文件。")
+    final_reds = []
+    for a in candidate_reds:
+        for b in candidate_reds:
+            for c in candidate_reds:
+                for d in candidate_reds:
+                    for e in candidate_reds:
+                        for f in candidate_reds:
+                            group = tuple(sorted(set([a, b, c, d, e, f])))
+                            if len(group) == 6:
+                                if exclude_history and group in history_set:
+                                    continue
+                                final_reds = list(group)
+                                break
+                        if final_reds: break
+                    if final_reds: break
+                if final_reds: break
+            if final_reds: break
+        if final_reds: break
+
+    if not final_reds:
+        final_reds = candidate_reds[:6]
+
+    candidate_blues = list(get_blue_candidates(blue_last)) if use_blue_delta else []
+    top_blues = [b for b in blue_df.index if not use_blue_delta or b in candidate_blues][:3]
+    if not top_blues:
+        top_blues = list(blue_df.index[:3])
+
+    return {
+        "红球": final_reds,
+        "篮球": top_blues
+    }
